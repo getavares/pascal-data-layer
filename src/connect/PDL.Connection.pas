@@ -3,12 +3,20 @@ unit PDL.Connection;
 interface
 
 uses
-  Classes;
+  Classes, SysUtils;
 
 type
-  TPDLParamsStoreType = (pstFile, pstWindowsRegistry);
+  IPDLConnection = interface
+    procedure Connect;
+    procedure Disconnect;
+    procedure StartTransaction;
+    procedure Commit;
+    procedure Rollback;
+  end;
 
-  TPDLGenericConnection = class
+  { TPDLGenericConnection }
+
+  TPDLGenericConnection = class(TInterfacedObject, IPDLConnection)
   private
     FParams: TStringList;
     FConnection: TObject;
@@ -21,6 +29,9 @@ type
     destructor Destroy; override;
     procedure Connect;
     procedure Disconnect;
+    procedure StartTransaction;
+    procedure Commit;
+    procedure Rollback;
     property Connection: TObject read FConnection;
   end;
 
@@ -37,21 +48,20 @@ type
     class function Instance: TPDLConnectionParams;
     procedure RegisterSpecialization(DriverName: String;
       Specialization: TPDLGenericConnectionClass);
-    procedure Load(AParamsPath: String; AStoreType: TPDLParamsStoreType);
+    procedure Load(AParamsPath: String);
     property Params: TStringList read FParams;
     property ConnectionClass: TPDLGenericConnectionClass read GetConnectionClass;
   end;
 
   TPDLConnection = class
   private
-    FPDLConnection: TPDLGenericConnection;
+    FPDLConnection: IPDLConnection;
   protected
   public
     constructor Create; virtual;
     destructor Destroy; override;
     procedure Connect;
     procedure Disconnect;
-    function Connection: TObject;
     procedure Commit;
     procedure Rollback;
     procedure StartTransaction;
@@ -69,18 +79,13 @@ var
 
 procedure TPDLConnection.Commit;
 begin
-TPDLLayer.Instance.Commit(FPDLConnection.FConnection);
+FPDLConnection.Commit;
 end;
 
 procedure TPDLConnection.Connect;
 begin
 FPDLConnection.Connect;
-TPDLFuncs.Initialize(FPDLConnection.FConnection.DriverName);
-end;
-
-function TPDLConnection.Connection: TFDConnection;
-begin
-Result:=FPDLConnection.Connection;
+//TPDLFuncs.Initialize(FPDLConnection.FConnection.DriverName);
 end;
 
 constructor TPDLConnection.Create;
@@ -91,9 +96,7 @@ end;
 destructor TPDLConnection.Destroy;
 begin
 if Assigned(FPDLConnection) then
-  begin
-  FPDLConnection.Free;
-  end;
+  FPDLConnection:=nil;
 inherited;
 end;
 
@@ -104,31 +107,30 @@ end;
 
 procedure TPDLConnection.Rollback;
 begin
-Connection.Rollback;
+FPDLConnection.Rollback;
 end;
 
 procedure TPDLConnection.StartTransaction;
 begin
-Connection.StartTransaction;
+FPDLConnection.StartTransaction;
 end;
 
 { TPDLGenericConnection }
 
 procedure TPDLGenericConnection.Connect;
 begin
-FConnection.Open;
+TPDLLayer.Instance.Connect(FConnection);
 end;
 
 constructor TPDLGenericConnection.Create;
 begin
 FParams:=TStringList.Create;
-FConnection:=TFDConnection.Create(Nil);
 LoadParams(TPDLConnectionParams.Instance.Params);
 end;
 
 destructor TPDLGenericConnection.Destroy;
 begin
-FConnection.Close;
+Disconnect;
 FConnection.Free;
 FParams.Clear;
 FParams.Free;
@@ -137,13 +139,27 @@ end;
 
 procedure TPDLGenericConnection.Disconnect;
 begin
-FConnection.Close;
+TPDLLayer.Instance.Disconnect(FConnection);
+end;
+
+procedure TPDLGenericConnection.StartTransaction;
+begin
+TPDLLayer.Instance.StartTransaction(FConnection);
+end;
+
+procedure TPDLGenericConnection.Commit;
+begin
+TPDLLayer.Instance.Commit(FConnection);
+end;
+
+procedure TPDLGenericConnection.Rollback;
+begin
+TPDLLayer.Instance.Rollback(FConnection);
 end;
 
 procedure TPDLGenericConnection.LoadParams(AParams: TStringList);
 begin
 FParams.Assign(AParams);
-FConnection.DriverName:=FParams.Values['DriverName'];
 AssignParams;
 end;
 
@@ -152,7 +168,7 @@ end;
 constructor TPDLConnectionParams.Create;
 begin
 FParams:=TStringList.Create;
-FPDLSpecializations:=TDictionary<String,TPDLGenericConnectionClass>.Create;
+FPDLSpecializations:=TStringList.Create;
 end;
 
 destructor TPDLConnectionParams.Destroy;
@@ -164,8 +180,15 @@ inherited;
 end;
 
 function TPDLConnectionParams.GetConnectionClass: TPDLGenericConnectionClass;
+var
+  SpecIndex: Integer;
+  DriverName: String;
 begin
-Result:=FPDLSpecializations.Items[FParams.Values['DriverName']];
+DriverName:=FParams.Values['DriverName'];
+SpecIndex:=FPDLSpecializations.IndexOf(DriverName);
+if SpecIndex=-1 then
+  raise Exception.Create(Format('Connection specialization of %s not found', [DriverName]));
+Result:=TPDLGenericConnectionClass(FPDLSpecializations.Objects[SpecIndex]);
 end;
 
 class function TPDLConnectionParams.Instance: TPDLConnectionParams;
@@ -175,18 +198,16 @@ if not Assigned(PDLConnectionParams) then
 Result:=PDLConnectionParams;
 end;
 
-procedure TPDLConnectionParams.Load(AParamsPath: String;
-  AStoreType: TPDLCParamsStoreType);
+procedure TPDLConnectionParams.Load(AParamsPath: String);
 begin
-if AStoreType=pstFile then
-  FParams.LoadFromFile(AParamsPath);
+FParams.LoadFromFile(AParamsPath);
 end;
 
 procedure TPDLConnectionParams.RegisterSpecialization(DriverName: String;
   Specialization: TPDLGenericConnectionClass);
 begin
-if (not FPDLSpecializations.ContainsKey(DriverName)) then
-  FPDLSpecializations.Add(DriverName, Specialization);
+if (FPDLSpecializations.IndexOf(DriverName)=-1) then
+  FPDLSpecializations.AddObject(DriverName, TObject(Specialization));
 end;
 
 end.
