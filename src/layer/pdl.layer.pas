@@ -11,8 +11,6 @@ type
   { TPDLLayerAbstraction }
 
   TPDLLayerAbstraction = class
-  private
-    FName: String;
   protected
     function GetName: String; virtual; abstract;
   public
@@ -39,12 +37,15 @@ type
 
   TPDLLayer = class
   private
+    FDefaultLayerName: String;
     FSpecializations: TStringList;
     function GetSpecializations(AName: String): TPDLLayerAbstraction;
+    procedure SetDefaultLayerName(AValue: String);
   public
     class function Instance: TPDLLayer;
     procedure RegisterSpecialization(ASpecialization: TPDLLayerAbstraction);
     property Specializations[AName: String]: TPDLLayerAbstraction read GetSpecializations; default;
+    property DefaultLayerName: String read FDefaultLayerName write SetDefaultLayerName;
   end;
 
 implementation
@@ -58,8 +59,16 @@ function TPDLLayer.GetSpecializations(AName: String): TPDLLayerAbstraction;
 var
   SpecIndex: Integer;
 begin
+if (AName='') then
+  AName:=FDefaultLayerName;
 SpecIndex:=FSpecializations.IndexOf(AName);
 Result:=TPDLLayerAbstraction(FSpecializations.Objects[SpecIndex]);
+end;
+
+procedure TPDLLayer.SetDefaultLayerName(AValue: String);
+begin
+if (FDefaultLayerName<>AValue) and (AValue<>'') then
+  FDefaultLayerName:=AValue;
 end;
 
 class function TPDLLayer.Instance: TPDLLayer;
@@ -72,7 +81,11 @@ end;
 procedure TPDLLayer.RegisterSpecialization(ASpecialization: TPDLLayerAbstraction);
 begin
 if FSpecializations.IndexOf(ASpecialization.Name)=-1 then
+  begin
   FSpecializations.AddObject(ASpecialization.Name, ASpecialization);
+  if (FDefaultLayerName='') and (FSpecializations.Count=1) then
+    DefaultLayerName:=ASpecialization.Name;
+  end;
 end;
 
 end.

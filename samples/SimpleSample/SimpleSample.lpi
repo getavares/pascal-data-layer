@@ -67,7 +67,6 @@
       <Unit7>
         <Filename Value="..\..\src\connect\spec\PDL.Connection.FB.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="UDBFBConnection"/>
       </Unit7>
       <Unit8>
         <Filename Value="..\..\src\connect\spec\PDL.Connection.SQLite.pas"/>
@@ -79,9 +78,8 @@
         <IsPartOfProject Value="True"/>
       </Unit9>
       <Unit10>
-        <Filename Value="..\..\src\layer\pdl.layer.pas"/>
+        <Filename Value="..\..\src\layer\PDL.Layer.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="PDL.Layer"/>
       </Unit10>
     </Units>
   </ProjectOptions>

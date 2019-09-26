@@ -20,12 +20,13 @@ type
   private
     FParams: TStringList;
     FConnection: TObject;
+    FLayerName: String;
     procedure LoadParams(AParams: TStringList);
   protected
     procedure AssignParams; virtual; abstract;
     property Params: TStringList read FParams;
   public
-    constructor Create; virtual;
+    constructor Create(ALayerName: String = ''); virtual;
     destructor Destroy; override;
     procedure Connect;
     procedure Disconnect;
@@ -58,7 +59,7 @@ type
     FPDLConnection: IPDLConnection;
   protected
   public
-    constructor Create; virtual;
+    constructor Create(ALayerName: String = ''); virtual;
     destructor Destroy; override;
     procedure Connect;
     procedure Disconnect;
@@ -88,9 +89,9 @@ FPDLConnection.Connect;
 //TPDLFuncs.Initialize(FPDLConnection.FConnection.DriverName);
 end;
 
-constructor TPDLConnection.Create;
+constructor TPDLConnection.Create(ALayerName: String);
 begin
-FPDLConnection:=TPDLConnectionParams.Instance.ConnectionClass.Create;
+FPDLConnection:=TPDLConnectionParams.Instance.ConnectionClass.Create(ALayerName);
 end;
 
 destructor TPDLConnection.Destroy;
@@ -119,12 +120,13 @@ end;
 
 procedure TPDLGenericConnection.Connect;
 begin
-TPDLLayer.Instance.Connect(FConnection);
+TPDLLayer.Instance[FLayerName].Connect(FConnection);
 end;
 
-constructor TPDLGenericConnection.Create;
+constructor TPDLGenericConnection.Create(ALayerName: String);
 begin
 FParams:=TStringList.Create;
+FLayerName:=ALayerName;
 LoadParams(TPDLConnectionParams.Instance.Params);
 end;
 
@@ -139,22 +141,22 @@ end;
 
 procedure TPDLGenericConnection.Disconnect;
 begin
-TPDLLayer.Instance.Disconnect(FConnection);
+TPDLLayer.Instance[FLayerName].Disconnect(FConnection);
 end;
 
 procedure TPDLGenericConnection.StartTransaction;
 begin
-TPDLLayer.Instance.StartTransaction(FConnection);
+TPDLLayer.Instance[FLayerName].StartTransaction(FConnection);
 end;
 
 procedure TPDLGenericConnection.Commit;
 begin
-TPDLLayer.Instance.Commit(FConnection);
+TPDLLayer.Instance[FLayerName].Commit(FConnection);
 end;
 
 procedure TPDLGenericConnection.Rollback;
 begin
-TPDLLayer.Instance.Rollback(FConnection);
+TPDLLayer.Instance[FLayerName].Rollback(FConnection);
 end;
 
 procedure TPDLGenericConnection.LoadParams(AParams: TStringList);
