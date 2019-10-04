@@ -6,6 +6,8 @@ uses
   SysUtils, Classes;
 
 type
+  EPDLExeception = class(Exception);
+
   IPDLExpression = interface
     procedure Validate;
     function ToString: String;
@@ -54,20 +56,20 @@ type
   end;
 
   IPDLBetween = interface(IPDLComparerOperator)
+    function Value1(AExpression: IPDLExpression): IPDLBetween;
+    function Value2(AExpression: IPDLExpression): IPDLBetween;
   end;
 
   IPDLBooleanExpression = interface(IPDLExpression)
-    function BoolAnd(AExpression: IPDLExpression): IPDLBooleanExpression;
-    function BoolOr(AExpression: IPDLExpression): IPDLBooleanExpression;
+    function PDLAnd(AExpression: IPDLExpression): IPDLBooleanExpression;
+    function PDLOr(AExpression: IPDLExpression): IPDLBooleanExpression;
   end;
 
   IPDLFuncs = interface(IPDLExpression)
   end;
 
   IPDLMathFuncs = interface(IPDLFuncs)
-  end;
-
-  IPDLLength = interface(IPDLMathFuncs)
+    constructor Create(AExpression: IPDLExression);
   end;
 
   IPDLMax = interface(IPDLMathFuncs)
@@ -85,10 +87,13 @@ type
   IPDLCount = interface(IPDLMathFuncs)
   end;
 
-  IPDLAbs = interface(IPDLFuncs)
+  IPDLAbs = interface(IPDLMathFuncs)
   end;
 
   IPDLStringFuncs = interface(IPDLFuncs)
+  end;
+
+  IPDLLength = interface(IPDLStringFuncs)
   end;
 
   IPDLTrim = interface(IPDLStringFuncs)
@@ -191,19 +196,85 @@ type
     function Insert: IPDLInsert;
   end;
 
+  IPDLLanguageLogicOperators = interface
+    function PDLAnd: IPDLAnd;
+    function PDLOr: IPDLOr;
+    function PDLNot: IPDLNot;
+  end;
+
+  IPDLLanguageComparerOperators = interface
+    function Equal: IPDLEqual;
+    function Different: IPDLDifferent;
+    function Like: IPDLLike;
+    function GreaterThan: IPDLGreaterThan;
+    function GreaterEqualThan: IPDLGreaterEqualThan;
+    function LessThan: IPDLLessThan;
+    function LessEqualThan: IPDLLessEqualThan;
+    function Between: IPDLBetween;
+  end;
+
   IPDLLanguageBool = interface
-    function BoolAnd: IPDLBooleanExpression;
-    function BoolOr: IPDLBooleanExpression;
+    function PDLAnd(AExpr1: IPDLExpression; AExpr2: IPDLExpression): IPDLBooleanExpression;
+    function PDLOr(AExpr1: IPDLExpression; AExpr2: IPDLExpression): IPDLBooleanExpression;
+  end;
+
+  IPDLLanguageMathFuncs = interface
+    function Max(AExpression: IPDLExpression): IPDLMax;
+    function Min(AExpression: IPDLExpression): IPDLMin;
+    function Sum(AExpression: IPDLExpression): IPDLSum;
+    function Avg(AExpression: IPDLExpression): IPDLAvg;
+    function Count(AExpression: IPDLExpression): IPDLCount;
+    function Abs(AExpression: IPDLExpression): IPDLAbs;
+  end;
+
+  IPDLLanguageStringFuncs = interface
+    function Length: IPDLLength;
+    function Trim: IPDLTrim;
+    function Upper: IPDLUpper;
+    function Lower: IPDLLower;
+  end;
+
+  IPDLLanguageDateTimeFuncs = interface
+    function CurrentDate: IPDLCurrentDate;
+    function CurrentTime: IPDLCurrentTime;
+    function CurrentDateTime: IPDLCurrentDateTime;
+  end;
+
+  IPDLLanguageConversionsFuncs = interface
+    function Coalesce: IPDLCoalesce;
+  end;
+
+  IPDLLanguageConditionalFuncs = interface
+    function PDLCase: IPDLCase;
+  end;
+
+  IPDLLanguageFuncs = interface
+    function Math: IPDLLanguageMathFuncs;
+    function Strings: IPDLLanguageStringFuncs;
+    function DateTime: IPDLLanguageDateTimeFuncs;
+    function Conversions: IPDLLanguageConversionsFuncs
+    function Conditional: IPDLLanguageConditionalFuncs;
   end;
 
   IPDLLanguage = interface
-    function BoolExpression(AExpression: IPDLExpression): IPDLBooleanExpression;
+    function GetName: String;
+    function Logic: IPDLLanguageLogicOperators;
+    function Comparer: IPDLLanguageComparerOperators;
+    function Bool: IPDLLanguageBool; overload;
+    function Bool(AExpression: IPDLExpression): IPDLBooleanExpression; overload;
+    function Commands: IPDLLanguageCommands;
+    function Funcs: IPDLLanguageFuncs;
   end;
+
+  { TPDLSQL }
 
   TPDLSQL = class sealed
   private
     FDefaultLanguageName: String;
     FLanguages: TStringList;
+    function GetDefaultLanguage: IPDLLanguage;
+    function GetLanguage(AName: String): IPDLLanguage;
+    procedure SetDefaultLanguageName(AValue: String);
   public
     class function Instance: TPDLSQL;
     procedure RegisterLanguage(ALanguage: IPDLLanguage);
@@ -213,5 +284,46 @@ type
   end;
 
 implementation
+
+var
+  PDLSQL: TPDLSQL;
+
+{ TPDLSQL }
+
+function TPDLSQL.GetDefaultLanguage: IPDLLanguage;
+begin
+  Result:=GetLanguage(FDefaultLanguageName);
+end;
+
+function TPDLSQL.GetLanguage(AName: String): IPDLLanguage;
+var
+  Index: Integer;
+begin
+  Index:=FLanguages.IndexOf(AName);
+  Result:=(FLanguages.Objects[Index] as IPDLLanguage);
+end;
+
+procedure TPDLSQL.SetDefaultLanguageName(AValue: String);
+begin
+  if (FDefaultLanguageName<>AValue) then
+    FDefaultLanguageName:=AValue;
+end;
+
+class function TPDLSQL.Instance: TPDLSQL;
+begin
+  if not Assigned(PDLSQL) then
+    PDLSQL:=TPDLSQL.Create;
+  Result:=PDLSQL;
+end;
+
+procedure TPDLSQL.RegisterLanguage(ALanguage: IPDLLanguage);
+begin
+  if FLanguages.IndexOf(ALanguage.GetName)=-1 then
+    begin
+    FLanguages.AddObject(ALanguage.GetName, ALanguage);
+    if FDefaultLanguageName='' then
+      FDefaultLanguageName:=ALanguage.GetName;
+    end;
+end;
 
 end.

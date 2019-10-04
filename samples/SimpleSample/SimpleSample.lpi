@@ -73,18 +73,16 @@
         <UnitName Value="UDBSQLiteConnection"/>
       </Unit8>
       <Unit9>
-        <Filename Value="..\..\src\layer\pdl.layer.pas"/>
+        <Filename Value="..\..\src\layer\PDL.Layer.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="PDL.Layer"/>
       </Unit9>
       <Unit10>
         <Filename Value="..\..\src\sql\PDL.SQL.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit10>
       <Unit11>
-        <Filename Value="..\..\src\sql\pdl.sql.ansi.pas"/>
+        <Filename Value="..\..\src\sql\PDL.SQL.Ansi.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="PDL.SQL.Ansi"/>
       </Unit11>
     </Units>
   </ProjectOptions>
